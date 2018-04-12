@@ -1,4 +1,4 @@
-# Fizz-Diff
+# Fuzz-Diff
 
 > 🐻 fuzzy image matching for automated reference testing
 
