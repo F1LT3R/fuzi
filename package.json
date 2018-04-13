@@ -28,6 +28,7 @@
 	"keywords": [],
 	"dependencies": {
 		"chalk": "^2.3.2",
+		"chromafi": "^2.0.4",
 		"color": "^3.0.0",
 		"get-pixels": "^3.3.0"
 	},
