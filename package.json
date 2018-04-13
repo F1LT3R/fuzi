@@ -1,10 +1,13 @@
 {
-	"name": "fuzz-diff",
-	"main": "fuzz-diff",
+	"name": "fuzzy-match",
+	"main": "fuzzy-match",
 	"version": "1.0.0",
 	"description": "🐻  fuzzy image diff'ing for continuous integration",
 	"license": "MIT",
 	"repository": "F1LT3R/fuzz-diff",
+	"bin": {
+		"fuzzymatch": "index.js"
+	},
 	"author": {
 		"name": "F1LT3R",
 		"email": "al@pwn.io",

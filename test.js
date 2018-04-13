@@ -1,7 +1,11 @@
+#!/usr/bin/env node
+
 const getPixels = require('get-pixels')
 const color = require('color')
 const chalk = require('chalk')
 const chromafi = require('chromafi')
+const deepmerge = require('deepmerge')
+const meow = require('meow')
 
 const style = {
 	title: chalk.yellow.underline
@@ -196,6 +200,8 @@ const imagesDidFuzzyMatch = maxDiff => {
 
 const outputVisualDiff = (visualDiff, opts) => {
 	logTitle('Visual Diff', opts)
+	console.log(chalk.grey.italic('Noramlized to tolerance'))
+	console.log()
 
 	let termOutput = ''
 	while (visualDiff.length > 0) {
@@ -208,7 +214,39 @@ const outputVisualDiff = (visualDiff, opts) => {
 	console.log(termOutput)
 }
 
-const compare = async (img1, img2, opts) => {
+const imageToTerminal = (title, img, columns, grad) => {
+	const imgWidth = img.shape[0]
+	const imgHeight = img.shape[1]
+	const u = 1 / columns * imgWidth
+
+	console.log(title)
+
+	let termOutput = ''
+
+	for (let y = 0; y < imgHeight; y += u) {
+		for (let x = 0; x < imgWidth; x += u) {
+			const idx = (
+					(imgWidth * parseInt(y)
+				) + parseInt(x)
+			) << 2
+
+			if (idx + 4 <= img.data.length) {
+				const r = img.data[idx]
+				const g = img.data[idx + 1]
+				const b = img.data[idx + 2]
+				const l = color({r, g, b}).hsl().color[2]
+				const d = chalk.bgRgb(r, g, b).rgb(r, g, b)
+				const c = grad[parseInt(((grad.length-1) / 100) * l)]
+				termOutput += d(c)
+			}
+		}
+		termOutput += '\n'
+	}
+
+	console.log(termOutput)
+}
+
+const fuzzyMatch = async (img1, img2, opts) => {
 	const image1 = await loadPixels(img1)
 	const image2 = await loadPixels(img2)
 
@@ -258,9 +296,9 @@ const compare = async (img1, img2, opts) => {
 		const lumDiff = differential('lum', s1, s2, idx)
 		const alpDiff = differential('alp', s1, s2, idx)
 
-		const h = parseInt((360 / maxDiff.hue) * hueDiff || 1)
-		const s = parseInt((100 / maxDiff.sat) * satDiff || 1)
-		const l = parseInt((100 / maxDiff.lum) * lumDiff || 1)
+		const h = parseInt((360 / maxDiff.hue) * hueDiff) || 0
+		const s = parseInt((100 / maxDiff.sat) * satDiff) || 0
+		const l = parseInt((100 / maxDiff.lum) * lumDiff) || 0
 
 		const diffColor = color({h, s, l})
 			.rgb().color.map(c => parseInt(c, 10))
@@ -272,7 +310,8 @@ const compare = async (img1, img2, opts) => {
 
 			// Provide luminane characters for terminals that
 			// may not have good (or any) color support
-			char: grad[parseInt(((grad.length-1) / 100) * l)]
+
+			char: grad[parseInt(((grad.length-1) / 100) * l)] || ' '
 		}
 	})
 
@@ -280,7 +319,6 @@ const compare = async (img1, img2, opts) => {
 	outputStatus(passed, maxDiff, opts)
 	outputScorecard(channelDiff, opts)
 	outputVisualDiff(visualDiff, opts)
-
 
 	if (opts.showExpected) {
 		const columns = opts.showExpectedWidth === 'max' ?
@@ -298,65 +336,6 @@ const compare = async (img1, img2, opts) => {
 
 	return passed
 }
-
-const imageToTerminal = (title, img, columns, grad) => {
-	const imgWidth = img.shape[0]
-	const imgHeight = img.shape[1]
-	const u = 1 / columns * imgWidth
-
-	console.log(title)
-
-	let termOutput = ''
-
-	for (let y = 0; y < imgHeight; y += u) {
-		for (let x = 0; x < imgWidth; x += u) {
-			const idx = (
-					(imgWidth * parseInt(y)
-				) + parseInt(x)
-			) << 2
-
-			if (idx + 4 <= img.data.length) {
-				const r = img.data[idx]
-				const g = img.data[idx + 1]
-				const b = img.data[idx + 2]
-				const l = color({r, g, b}).hsl().color[2]
-				const d = chalk.bgRgb(r, g, b).rgb(r, g, b)
-				const c = grad[parseInt(((grad.length-1) / 100) * l)]
-				termOutput += d(c)
-			}
-		}
-		termOutput += '\n'
-	}
-
-	console.log(termOutput)
-}
-// THE SAME FILE
-// const expected = './fixtures/local-wish-command.png'
-// const actual = './fixtures/local-wish-command.png'
-
-// // THE SAME GRAPHIC RENDERED ON 2 DIFFERENT MACHINES
-// const expected = './fixtures/local-wish-command.png'
-// const actual = './fixtures/server-wish-command.png'
-
-// // THE SAME GRAPHIC AT DIFFERENT SIZES
-// const expected = './fixtures/local-wish-command-sml.png'
-// const actual = './fixtures/local-wish-command.png'
-
-// VERY DIFFERENT IMAGES
-// const expected = './fixtures/emojis.png'
-// const actual = './fixtures/iterm2colors-file.png'
-
-
-// const expected = './fixtures/server-wish-command.png'
-// const actual = './fixtures/iterm2colors-file.png'
-
-// const expected = './fixtures/local-wish-command.png'
-// const actual = './fixtures/iterm2colors-file.png'
-
-// const actual = './fixtures/emojis.png'
-
-// const expected = './fixtures/IMG_20180401_134432.jpg'
-// const actual = './fixtures/IMG_20180401_134435.jpg'
 
 const defaultOpts = {
 	grid: {
@@ -377,10 +356,76 @@ const defaultOpts = {
 	// showActualWidth: 'max',
 }
 
+module.exports = fuzzyMatch
 
-const fuzzyMatch = (imgPath1, imgPath2, opts) => {
-	opts = deepmerge(defaultOpts, opts)
-	return compare(imgPath1, imgPath2, opts)
+const meowStr =`
+	Usage
+	  $ fuzzymatch <expectedImg> <actualImg> [options]
+
+	Options
+	  --hue, -h  Hue tolerance (0 - 360)
+	  --sat, -s  Saturation tolerance (0 - 100)
+	  --lum, -l  Luminance tolerance (0 - 100)
+	  --alp, -a  Alpha tolerance (0 - 100)
+	  --showExpected, -se  Show expected image (true, false)
+	  --showActual, -sa  Show actual image (true, false)
+	  --imageWidth -w  Column width to output original images ('max', columns)
+
+	Examples
+	  $ fuzzymatch a.png b.jpg -s 50
+`
+const meowOpts = {
+	flags: {
+		hue: {
+			type: 'number',
+			alias: 'h'
+		},
+		sat: {
+			type: 'number',
+			alias: 's'
+		},
+		lum: {
+			type: 'number',
+			alias: 'l'
+		},
+		alp: {
+			type: 'number',
+			alias: 'a'
+		},
+		showExpected: {
+			type: 'boolean',
+			alias: 'se'
+		},
+		showActual: {
+			type: 'boolean',
+			alias: 'sa'
+		},
+		imageWidth: {
+			type: 'string',
+			alias: 'w'
+		}
+	}
 }
 
-module.exports = fuzzyMatch
+const meowCli = meow(meowStr, meowOpts)
+
+const isCli = !module.parent
+
+if (isCli) {
+	const [expectedImg, actualImg] = meowCli.input
+
+	const opts = deepmerge(defaultOpts, {
+		tolerance: {
+			hue: meowCli.flags.hue || 0,
+			sat: meowCli.flags.sat || 0,
+			lum: meowCli.flags.lum || 0,
+			alp: meowCli.flags.alph || 0,
+		},
+	// 	// showExpected: meowCli.flags.showExpected,
+	// 	// showActual: meowCli.flags.showExpected,
+	// 	// showExpectedWidth: meowCli.flags.imageWidth,
+	// 	// showActualWidth: meowCli.flags.imageWidth
+	})
+
+	fuzzyMatch(expectedImg, actualImg, opts)
+}
