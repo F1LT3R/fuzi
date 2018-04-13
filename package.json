@@ -33,11 +33,14 @@
 		"chalk": "^2.3.2",
 		"chromafi": "^2.0.4",
 		"color": "^3.0.0",
-		"get-pixels": "^3.3.0"
+		"deepmerge": "^2.1.0",
+		"get-pixels": "^3.3.0",
+		"meow": "^4.0.0"
 	},
 	"devDependencies": {
 		"ava": "^0.25.0",
 		"coveralls": "^3.0.0",
+		"has-flag": "^3.0.0",
 		"husky": "^0.14.3",
 		"nyc": "^11.6.0",
 		"xo": "^0.20.3"
