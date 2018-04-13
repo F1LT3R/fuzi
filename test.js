@@ -3,6 +3,29 @@ const color = require('color')
 const chalk = require('chalk')
 const chromafi = require('chromafi')
 
+const style = {
+	title: chalk.yellow.underline
+}
+
+const grad = ' ░▒▓█'
+const bMap = {
+	H___: '▘',
+	_S__: '▝',
+	__L_: '▖',
+	___A: '▗',
+	HS__: '▀',
+	HSL_: '▛',
+	HSLA: '█',
+	_SL_: '▞',
+	_SLA: '▟',
+	__LA: '▄',
+	H__A: '▚',
+	H_L_: '▌',
+	_S_A: '▐',
+	H_LA: '▙',
+	HS_A: '▜',
+}
+
 const loadPixels = path => new Promise((resolve, reject) => {
 	getPixels(path, function(err, pixels) {
 		if (err) {
@@ -90,10 +113,100 @@ const makeGrid = (width, height, opts) => {
 
 const statGridSquares = (img, grid) =>
 	grid.map(square => Object.assign(square,
-		{s: stat(img, square.c)}
+		{stat: stat(img, square.c)}
 	))
 
+const outputScorecard = (channelDiff, opts) => {
+	console.log()
+	console.log(
+		chalk.yellow.underline('Scorecard'.padEnd(opts.grid.columns, ' ') + '\n')
+	)
+	let termOutput = ''
+	for (let y = 0; y < opts.grid.rows; y++) {
+		for (let x = 0; x < opts.grid.columns; x++) {
+			const n = y * (opts.grid.columns) + x
+			let b = ''
+			b += channelDiff.hue[n] ? 'H' : '_'
+			b += channelDiff.sat[n] ? 'S' : '_'
+			b += channelDiff.lum[n] ? 'L' : '_'
+			b += channelDiff.alp[n] ? 'A' : '_'
+			const bChar = bMap[b] || ''
 
+			if (bChar) {
+				termOutput += chalk.bgRedBright.bold.black(bChar)
+			} else {
+				termOutput += chalk.bgGreen(' ')
+			}
+		}
+		termOutput += '\n'
+	}
+	console.log(termOutput)
+}
+
+const pad = (str, opts, columns) =>
+	str.padEnd(columns || opts.grid.columns, ' ') + '\n'
+
+const logTitle = (str, opts) => {
+	console.log(style.title(pad(str, opts)))
+}
+
+const outputStatus = (pass, maxDiff, opts) => {
+	const title = 'Status'
+	logTitle(title, opts)
+
+	if (pass) {
+		console.log(chalk.bgGreen.black.bold(' PASS '))
+	} else {
+		console.log(chalk.bgRedBright.black.bold(' FAIL '))
+	}
+
+	const chromafiOpts = {
+		lineNumbers: false,
+		codePad: 0
+	}
+
+	console.log()
+	console.log(chalk.magenta('You expected the tolerance to be:'))
+	console.log()
+	console.log(chromafi(opts.tolerance, chromafiOpts))
+
+	console.log(chalk.magenta('The actual channel difference was:'))
+	console.log(chalk.gray.italic.underline('(Use these values in `opts.tolerance` to make the test pass.)'))
+	console.log()
+	const toleranceDiff = {
+		hue: maxDiff.hue,
+		sat: maxDiff.sat,
+		lum: maxDiff.lum,
+		alp: maxDiff.alp
+	}
+	console.log(chromafi(toleranceDiff, chromafiOpts))
+
+	return pass
+}
+
+const imagesDidFuzzyMatch = maxDiff => {
+	const pass = (
+		maxDiff.hue +
+		maxDiff.sat +
+		maxDiff.lum +
+		maxDiff.alp
+	) === 0
+	return pass
+}
+
+const outputVisualDiff = (visualDiff, opts) => {
+	logTitle('Visual Diff', opts)
+
+	let termOutput = ''
+	while (visualDiff.length > 0) {
+		const row = visualDiff.splice(0, opts.grid.columns)
+		row.forEach(square => {
+			termOutput += square.col(square.char)
+		})
+		termOutput += '\n'
+	}
+	console.log(termOutput)
+}
 
 const compare = async (img1, img2, opts) => {
 	const image1 = await loadPixels(img1)
@@ -106,184 +219,117 @@ const compare = async (img1, img2, opts) => {
 	const grid2 = makeGrid(w2, h2, opts)
 
 	const size = opts.grid.columns * opts.grid.rows
-	const diffHue = Array(size).fill(0)
-	const diffSat = Array(size).fill(0)
-	const diffLum = Array(size).fill(0)
-	const diffAll = Array(size).fill(0)
-	const diffClr = Array(size).fill(0)
-	const diffAlp = Array(size).fill(0)
+
+	const visualDiff = Array(size).fill(0)
+	const channelDiff = {
+		hue: Array(size).fill(0),
+		sat: Array(size).fill(0),
+		lum: Array(size).fill(0),
+		alp: Array(size).fill(0)
+	}
+
+	const maxDiff = {
+		hue: 0,
+		sat: 0,
+		lum: 0,
+		alp: 0
+	}
 
 	const gridStat1 = statGridSquares(image1, grid1)
 	const gridStat2 = statGridSquares(image2, grid2)
 
-	let maxHueDiff = 0
-	let maxSatDiff = 0
-	let maxLumDiff = 0
-	let maxAlpDiff = 0
-
-	const grad = ' ░▒▓█'
-
-	gridStat1.forEach((square, i) => {
-		const hueDiff = square.s.hue - gridStat2[i].s.hue
-		if (hueDiff > opts.tolerance.hue) {
-			diffHue[i] += 1
-			diffAll[i] += 1
-
-			if (hueDiff > maxHueDiff) {
-				maxHueDiff = hueDiff
+	const differential = (channel, s1, s2, idx) => {
+		const cDiff = s1[channel] - s2[channel]
+		if (cDiff > opts.tolerance[channel]) {
+			channelDiff[channel][idx] += 1
+			if (cDiff > maxDiff[channel]) {
+				maxDiff[channel] = cDiff
 			}
 		}
+		return cDiff
+	}
 
-		const satDiff = square.s.sat - gridStat2[i].s.sat
-		if (satDiff > opts.tolerance.sat) {
-			diffSat[i] += 1
-			diffAll[i] += 1
+	gridStat1.forEach((square, idx) => {
+		const s1 = square.stat
+		const s2 = gridStat2[idx].stat
 
-			if (satDiff > maxSatDiff) {
-				maxSatDiff = satDiff
-			}
-		}
+		const hueDiff = differential('hue', s1, s2, idx)
+		const satDiff = differential('sat', s1, s2, idx)
+		const lumDiff = differential('lum', s1, s2, idx)
+		const alpDiff = differential('alp', s1, s2, idx)
 
-		const lumDiff = square.s.lum - gridStat2[i].s.lum
-		if (lumDiff > opts.tolerance.lum) {
-			diffLum[i] += 1
-			diffAll[i] += 1
+		const h = parseInt((360 / maxDiff.hue) * hueDiff || 1)
+		const s = parseInt((100 / maxDiff.sat) * satDiff || 1)
+		const l = parseInt((100 / maxDiff.lum) * lumDiff || 1)
 
-			if (lumDiff > maxLumDiff) {
-				maxLumDiff = lumDiff
-			}
-		}
+		const diffColor = color({h, s, l})
+			.rgb().color.map(c => parseInt(c, 10))
 
-		const alpDiff = square.s.a - gridStat2[i].s.a
-		if (alpDiff > opts.tolerance.alpha) {
-			diffAlp[i] += 1
-			diffAll[i] += 1
+		visualDiff[idx] = {
+			// Use foreground and background colors to hide
+			// the luninance characters in most situations
+			col: chalk.bgRgb(...diffColor).rgb(...diffColor),
 
-			if (alpDiff > maxAlpDiff) {
-				maxalpDiff = alpDiff
-			}
-		}
-
-		const h = parseInt((360 / maxHueDiff) * hueDiff || 1)
-		const s = parseInt((100 / maxSatDiff) * satDiff || 1)
-		const l = parseInt((100 / maxLumDiff) * lumDiff || 1)
-
-		const diffCol = color({h, s, l})
-			.rgb().color.map(c => parseInt(c))
-
-		diffClr[i] = {
-			col: chalk.bgRgb(...diffCol).rgb(...diffCol),
+			// Provide luminane characters for terminals that
+			// may not have good (or any) color support
 			char: grad[parseInt(((grad.length-1) / 100) * l)]
 		}
 	})
 
-	const bMap = {
-		H___: '▘',
-		_S__: '▝',
-		__L_: '▖',
-		___A: '▗',
-		HS__: '▀',
-		HSL_: '▛',
-		HSLA: '█',
-		_SL_: '▞',
-		_SLA: '▟',
-		__LA: '▄',
-		H__A: '▚',
-		H_L_: '▌',
-		_S_A: '▐',
-		H_LA: '▙',
-		HS_A: '▜',
-	}
+	const passed = imagesDidFuzzyMatch(maxDiff)
+	outputStatus(passed, maxDiff, opts)
+	outputScorecard(channelDiff, opts)
+	outputVisualDiff(visualDiff, opts)
 
-
-	console.log()
-	let flagOutput = ''
-	for (let y = 0; y < opts.grid.rows; y++) {
-		for (let x = 0; x < opts.grid.columns; x++) {
-			const n = y * (opts.grid.columns) + x
-			let b = ''
-			b += diffHue[n] ? 'H' : '_'
-			b += diffSat[n] ? 'S' : '_'
-			b += diffLum[n] ? 'L' : '_'
-			b += diffAlp[n] ? 'A' : '_'
-			const bChar = bMap[b] || ''
-
-			if (bChar) {
-				flagOutput += chalk.bgRedBright.bold.black(bChar)
-			} else {
-				flagOutput += chalk.bgGreen(' ')
-			}
-		}
-		flagOutput += '\n'
-	}
-	console.log(flagOutput)
-
-	const toleranceDiff = {
-		hue: maxHueDiff,
-		sat: maxSatDiff,
-		lum: maxLumDiff,
-		alp: maxAlpDiff
-	}
-
-	console.log(chalk.magenta('Actual difference in tolerance:'))
-	console.log(chalk.italic.gray('(Use these values in opts.tolerance to pass the test.)'))
-	console.log(chromafi(toleranceDiff, {
-		lineNumbers: false,
-		codePad: 0
-	}))
-
-	console.log()
-	let diffOutput = ''
-	while (diffClr.length > 0) {
-		const row = diffClr.splice(0, opts.grid.columns)
-		row.forEach(d => {
-			diffOutput += d.col(d.char)
-		})
-		diffOutput += '\n'
-	}
-	console.log(diffOutput)
 
 	if (opts.showExpected) {
-		console.log()
-		console.log('Expected')
-		let output = ''
-		const sz = 1 / process.stdout.columns * image1.shape[0]
-		for (let y = 0; y < image1.shape[1]; y += sz) {
-			for (let x = 0; x < image1.shape[0]; x += sz) {
-				const idx = ((image1.shape[0] * parseInt(y)) + parseInt(x)) << 2
-				if (idx + 4 <= image1.data.length) {
-					const r = image1.data[idx]
-					const g = image1.data[idx + 1]
-					const b = image1.data[idx + 2]
-					const d = chalk.bgRgb(r, g, b)
-					output += d(' ')
-				}
-			}
-		}
-		console.log(output)
+		const columns = opts.showExpectedWidth === 'max' ?
+			process.stdout.columns : opts.showExpectedWidth
+		const title = chalk.yellow.underline('Expected'.padEnd(columns, ' ') + '\n')
+		imageToTerminal(title, image1, columns, grad)
 	}
 
 	if (opts.showActual) {
-		console.log()
-		console.log('Actual')
-		let output2 = ''
-		const sz2 = 1 / process.stdout.columns * image2.shape[0]
-		for (let y = 0; y < image2.shape[1]; y += sz2) {
-			for (let x = 0; x < image2.shape[0]; x += sz2) {
-				const idx = ((image2.shape[0] * parseInt(y)) + parseInt(x)) << 2
-				if (idx + 4 <= image2.data.length) {
-					const r = image2.data[idx]
-					const g = image2.data[idx + 1]
-					const b = image2.data[idx + 2]
-					const d = chalk.bgRgb(r, g, b)
-					output2 += d(' ')
-				}
-			}
-		}
-		console.log(output2)
+		const columns = opts.showActualWidth === 'max' ?
+			process.stdout.columns : opts.showActualWidth
+		const title = chalk.yellow.underline('Actual'.padEnd(columns, ' ') + '\n')
+		imageToTerminal(title, image2, columns, grad)
 	}
+
+	return passed
 }
 
+const imageToTerminal = (title, img, columns, grad) => {
+	const imgWidth = img.shape[0]
+	const imgHeight = img.shape[1]
+	const u = 1 / columns * imgWidth
+
+	console.log(title)
+
+	let termOutput = ''
+
+	for (let y = 0; y < imgHeight; y += u) {
+		for (let x = 0; x < imgWidth; x += u) {
+			const idx = (
+					(imgWidth * parseInt(y)
+				) + parseInt(x)
+			) << 2
+
+			if (idx + 4 <= img.data.length) {
+				const r = img.data[idx]
+				const g = img.data[idx + 1]
+				const b = img.data[idx + 2]
+				const l = color({r, g, b}).hsl().color[2]
+				const d = chalk.bgRgb(r, g, b).rgb(r, g, b)
+				const c = grad[parseInt(((grad.length-1) / 100) * l)]
+				termOutput += d(c)
+			}
+		}
+		termOutput += '\n'
+	}
+
+	console.log(termOutput)
+}
 // THE SAME FILE
 // const expected = './fixtures/local-wish-command.png'
 // const actual = './fixtures/local-wish-command.png'
@@ -297,8 +343,8 @@ const compare = async (img1, img2, opts) => {
 // const actual = './fixtures/local-wish-command.png'
 
 // VERY DIFFERENT IMAGES
-const expected = './fixtures/emojis.png'
-const actual = './fixtures/iterm2colors-file.png'
+// const expected = './fixtures/emojis.png'
+// const actual = './fixtures/iterm2colors-file.png'
 
 
 // const expected = './fixtures/server-wish-command.png'
@@ -312,7 +358,7 @@ const actual = './fixtures/iterm2colors-file.png'
 // const expected = './fixtures/IMG_20180401_134432.jpg'
 // const actual = './fixtures/IMG_20180401_134435.jpg'
 
-const opts = {
+const defaultOpts = {
 	grid: {
 		columns: 32,
 		rows: 16
@@ -322,7 +368,19 @@ const opts = {
 	    sat: 0,
 	    lum: 0,
 	    alp: 0
-	}
+	},
+	showExpected: true,
+	showExpectedWidth: 32,
+	// showExpectedWidth: 'max',
+	showActual: true,
+	showActualWidth: 32,
+	// showActualWidth: 'max',
 }
 
-compare(expected, actual, opts)
+
+const fuzzyMatch = (imgPath1, imgPath2, opts) => {
+	opts = deepmerge(defaultOpts, opts)
+	return compare(imgPath1, imgPath2, opts)
+}
+
+module.exports = fuzzyMatch
