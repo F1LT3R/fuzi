@@ -299,26 +299,30 @@ const fuzzyMatch = async (img1, img2, opts) => {
 	const gridStat1 = statGridSquares(image1, grid1)
 	const gridStat2 = statGridSquares(image2, grid2)
 
-	const differential = (channel, s1, s2, idx) => {
-		const cDiff = s1[channel] - s2[channel]
-		if (cDiff > opts.tolerance[channel]) {
+	const setAbsoluteDiff = (channel, s1, s2, idx) => {
+		const aDiff = Math.abs(s1[channel] - s2[channel])
+		if (aDiff > opts.tolerance[channel]) {
 			channelDiff[channel][idx] += 1
-			if (cDiff > maxDiff[channel]) {
-				maxDiff[channel] = cDiff
+			if (aDiff > maxDiff[channel]) {
+				maxDiff[channel] = aDiff
 			}
 		}
-		return cDiff
 	}
 
 	gridStat1.forEach((square, idx) => {
 		const s1 = square.stat
 		const s2 = gridStat2[idx].stat
 
-		const hueDiff = differential('hue', s1, s2, idx)
-		const satDiff = differential('sat', s1, s2, idx)
-		const lumDiff = differential('lum', s1, s2, idx)
-		// Also diff the alpha channel
-		differential('alp', s1, s2, idx)
+		// Absolute Diff - channel tolerance threshold
+		setAbsoluteDiff('hue', s1, s2, idx)
+		setAbsoluteDiff('sat', s1, s2, idx)
+		setAbsoluteDiff('lum', s1, s2, idx)
+		setAbsoluteDiff('alp', s1, s2, idx)
+
+		// Signed Diff - signed values gen difference img
+		const hueDiff = s1.hue - s2.hue
+		const satDiff = s1.sat - s2.sat
+		const lumDiff = s1.lum - s2.lum
 
 		const h = parseInt((360 / maxDiff.hue) * hueDiff, 10) || 0
 		const s = parseInt((100 / maxDiff.sat) * satDiff, 10) || 0

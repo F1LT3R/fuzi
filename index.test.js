@@ -42,8 +42,8 @@ test('Identical images pass', async t => {
 test('Tolerance difference is the same when images are swapped', async t => {
 	const opts = {
 		grid: {
-			columns: 8,
-			rows: 8
+			columns: 1,
+			rows: 1
 		},
 		tolerance: {
 			hue: 0,
