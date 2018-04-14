@@ -370,7 +370,8 @@ const fuzzyMatch = async (img1, img2, opts) => {
 	const result = {
 		pass: passed,
 		fail: !passed,
-		difference: maxDiff
+		difference: maxDiff,
+		scorecard
 	}
 
 	if (opts.display.scorecard) {

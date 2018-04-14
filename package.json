@@ -1,6 +1,6 @@
 {
 	"name": "fuzi",
-	"version": "1.0.0",
+	"version": "1.0.0-alpha",
 	"description": "🐻  fuzzy image diff'ing for the terminal",
 	"license": "MIT",
 	"repository": "F1LT3R/fuzi",
