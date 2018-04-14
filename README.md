@@ -1,5 +1,7 @@
 # 🚧  Alpha Version (Work in Progress)
 
+The API is subject to change.
+
 ---
 
 # Fuzi!
