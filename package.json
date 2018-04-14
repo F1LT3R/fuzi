@@ -1,12 +1,11 @@
 {
-	"name": "fuzzy-match",
-	"main": "fuzzy-match",
+	"name": "fuzi",
 	"version": "1.0.0",
-	"description": "🐻  fuzzy image diff'ing for continuous integration",
+	"description": "🐻  fuzzy image diff'ing for the terminal",
 	"license": "MIT",
-	"repository": "F1LT3R/fuzz-diff",
+	"repository": "F1LT3R/fuzi",
 	"bin": {
-		"fuzzymatch": "index.js"
+		"fuzi": "cli.js"
 	},
 	"author": {
 		"name": "F1LT3R",
@@ -26,9 +25,35 @@
 		}
 	},
 	"files": [
+		"default-opts.js",
+		"cli.js",
 		"index.js"
 	],
-	"keywords": [],
+	"keywords": [
+		"fuzzy",
+		"match",
+		"image",
+		"diff",
+		"channels",
+		"jpg",
+		"jpeg",
+		"gif",
+		"png",
+		"pixels",
+		"cli",
+		"terminal",
+		"prompt",
+		"hue",
+		"saturation",
+		"luminance",
+		"alpha",
+		"grid",
+		"ci",
+		"cd",
+		"cloud",
+		"test",
+		"reference"
+	],
 	"dependencies": {
 		"chalk": "^2.3.2",
 		"chromafi": "^2.0.4",

@@ -1,11 +1,10 @@
-#!/usr/bin/env node
-
 const getPixels = require('get-pixels')
 const color = require('color')
 const chalk = require('chalk')
 const chromafi = require('chromafi')
 const deepmerge = require('deepmerge')
-const meow = require('meow')
+
+const defaultOpts = require('./default-opts.js')
 
 const style = {
 	title: chalk.yellow.underline,
@@ -14,6 +13,7 @@ const style = {
 }
 
 const grad = ' ░▒▓█'
+
 const bMap = {
 	H___: '▘',
 	_S__: '▝',
@@ -136,11 +136,9 @@ const logTitle = (str, opts) => {
 	}
 }
 
-const outputScorecard = (channelDiff, opts) => {
-	log()
-	logTitle('Scorecard', opts)
+const generateScorecard = (channelDiff, opts) => {
+	let scorecard = ''
 
-	let termOutput = ''
 	for (let y = 0; y < opts.grid.rows; y++) {
 		for (let x = 0; x < opts.grid.columns; x++) {
 			const n = (y * (opts.grid.columns)) + x
@@ -153,14 +151,21 @@ const outputScorecard = (channelDiff, opts) => {
 			const bChar = bMap[b] || ''
 
 			if (bChar) {
-				termOutput += chalk.bgRedBright.bold.black(bChar)
+				scorecard += chalk.bgRedBright.bold.black(bChar)
 			} else {
-				termOutput += chalk.bgGreen(' ')
+				scorecard += chalk.bgGreen(' ')
 			}
 		}
-		termOutput += '\n'
+		scorecard += '\n'
 	}
-	log(termOutput)
+
+	return scorecard
+}
+
+const outputScorecard = (scorecard, opts) => {
+	log()
+	logTitle('Scorecard', opts)
+	log(scorecard)
 }
 
 const imagesDidFuzzyMatch = maxDiff => {
@@ -173,10 +178,7 @@ const imagesDidFuzzyMatch = maxDiff => {
 	return pass
 }
 
-const outputResult = (pass, maxDiff, opts) => {
-	const title = 'Result'
-	logTitle(title, opts)
-
+const outputResult = (pass, maxDiff) => {
 	const vals = `diff = {hue: ${maxDiff.hue}, sat: ${maxDiff.sat}, lum: ${maxDiff.lum}, alp: ${maxDiff.alp}}`
 	const obj = chromafi(vals, {
 		lang: 'javascript',
@@ -190,22 +192,15 @@ const outputResult = (pass, maxDiff, opts) => {
 	}
 }
 
-const outputValues = (pass, maxDiff, opts) => {
+const outputDetails = (pass, maxDiff, opts) => {
 	const title = 'Values'
 	logTitle(title, opts)
-
-	if (pass) {
-		log(style.pass(' PASS '))
-	} else {
-		log(style.fail(' FAIL '))
-	}
 
 	const chromafiOpts = {
 		lineNumbers: false,
 		codePad: 0
 	}
 
-	log()
 	log(chalk.magenta('You expected the tolerance to be:'))
 	log()
 	log(chromafi(opts.tolerance, chromafiOpts))
@@ -221,17 +216,16 @@ const outputValues = (pass, maxDiff, opts) => {
 		alp: maxDiff.alp
 	}
 
-	log(chromafi(toleranceDiff, chromafiOpts))
-
+	log(chromafi({toleranceDiff}, chromafiOpts))
 	log(chalk.grey.italic(`-h ${maxDiff.hue} -s ${maxDiff.sat} -l ${maxDiff.lum} -a ${maxDiff.alp}`))
-
 	return pass
 }
 
 const outputVisualDiff = (visualDiff, opts) => {
 	logTitle('Visual Diff', opts)
-	log(chalk.grey.italic('Noramlized to tolerance'))
-	log()
+	if (opts.display.titles) {
+		log(chalk.grey.italic('(Normalized to tolerance)\n'))
+	}
 
 	let termOutput = ''
 	while (visualDiff.length > 0) {
@@ -347,15 +341,16 @@ const fuzzyMatch = async (img1, img2, opts) => {
 	})
 
 	const passed = imagesDidFuzzyMatch(maxDiff)
+	const scorecard = generateScorecard(channelDiff, opts)
 
 	if (opts.display.result) {
 		outputResult(passed, maxDiff, opts)
 	}
-	if (opts.display.values) {
-		outputValues(passed, maxDiff, opts)
+	if (opts.display.details) {
+		outputDetails(passed, maxDiff, opts)
 	}
 	if (opts.display.scorecard) {
-		outputScorecard(channelDiff, opts)
+		outputScorecard(scorecard)
 	}
 	if (opts.display.visualDiff) {
 		outputVisualDiff(visualDiff, opts)
@@ -372,109 +367,22 @@ const fuzzyMatch = async (img1, img2, opts) => {
 		imageToTerminal('Actual', image2, columns, grad, opts)
 	}
 
-	return passed
+	const result = {
+		pass: passed,
+		fail: !passed,
+		difference: maxDiff
+	}
+
+	if (opts.display.scorecard) {
+		result.scorecard = scorecard
+	}
+
+	return result
 }
 
-const defaultOpts = {
-	grid: {
-		columns: 32,
-		rows: 16
-	},
-	tolerance: {
-		hue: 0,
-		sat: 0,
-		lum: 0,
-		alp: 0
-	},
-	display: {
-		images: false,
-		imageWidth: 32,
-		result: false,
-		values: false,
-		scorecard: false,
-		visualDiff: false,
-		titles: false
-	}
+const fuzi = (expectedImg, actualImg, opts) => {
+	opts = deepmerge(defaultOpts, opts)
+	return fuzzyMatch(expectedImg, actualImg, opts)
 }
 
-module.exports = fuzzyMatch
-
-const meowStr = `
-	Usage
-	  $ fuzzymatch <expectedImg> <actualImg> [options]
-
-	Options
-	  --hue, -h  Hue tolerance (0 - 360)
-	  --sat, -s  Saturation tolerance (0 - 100)
-	  --lum, -l  Luminance tolerance (0 - 100)
-	  --alp, -a  Alpha tolerance (0 - 100)
-	  --showImages, -i  Show original images in terminal (true/columns)
-	  --details, -d  Display more detailed results. (true/false)
-
-	Examples
-	  $ fuzzymatch a.png b.jpg -s 50 -i
-`
-const meowOpts = {
-	flags: {
-		hue: {
-			type: 'number',
-			alias: 'h'
-		},
-		sat: {
-			type: 'number',
-			alias: 's'
-		},
-		lum: {
-			type: 'number',
-			alias: 'l'
-		},
-		alp: {
-			type: 'number',
-			alias: 'a'
-		},
-		showImages: {
-			type: 'string',
-			alias: 'i'
-		},
-		details: {
-			type: 'boolean',
-			alias: 'd'
-		}
-	}
-}
-
-const meowCli = meow(meowStr, meowOpts)
-
-const isCli = !module.parent
-
-if (isCli) {
-	const opts = defaultOpts
-
-	const [expectedImg, actualImg] = meowCli.input
-
-	const hueTolCli = meowCli.flags.h
-	const satTolCli = meowCli.flags.s
-	const lumTolCli = meowCli.flags.l
-	const alpTolCli = meowCli.flags.a
-
-	if (hueTolCli) {
-		opts.tolerance.hue = hueTolCli
-	}
-	if (satTolCli) {
-		opts.tolerance.sat = satTolCli
-	}
-	if (lumTolCli) {
-		opts.tolerance.lum = lumTolCli
-	}
-	if (alpTolCli) {
-		opts.tolerance.alp = alpTolCli
-	}
-	if (typeof meowCli.flags.i === 'string') {
-		opts.display.images = meowCli.flags.i || true
-	}
-
-	// Force result to display in CLI mode
-	opts.display.result = true
-
-	fuzzyMatch(expectedImg, actualImg, opts)
-}
+module.exports = fuzi
