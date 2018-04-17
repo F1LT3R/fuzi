@@ -13,6 +13,14 @@ API subject to change
 [![NPM Version](https://img.shields.io/npm/v/fuzi.svg)](https://www.npmjs.com/package/fuzi)
 [![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/sindresorhus/xo)
 
+## Support
+
+Support the development of Fuzi by [becoming a patreon](https://patreon.com/bePatron?u=9720216).
+
+<a href="https://patreon.com/bePatron?u=9720216"><img width="120" src="https://f1lt3r.io/content/images/2018/04/become_a_patron_button@2x.png"></a>
+
+## Example
+
 Need to check the difference between two images? Ask Fuzi! 🐻
 
 ```shell
@@ -20,12 +28,6 @@ $ fuzi red-square.png green-circle.jpg -v
 ```
 
 ![Fuzi! in action](examples/first-glance-grid.png)
-
-## Support
-
-Support the development of Fuzi by [becoming a patreon](https://patreon.com/bePatron?u=9720216).
-
-<a href="https://patreon.com/bePatron?u=9720216"><img width="120" src="https://f1lt3r.io/content/images/2018/04/become_a_patron_button@2x.png"></a>
 
 ## Features
 
@@ -37,6 +39,7 @@ Support the development of Fuzi by [becoming a patreon](https://patreon.com/bePa
 	+ File type can be different
 - Supports file-types: PNG, JPG
 - Configurable settings for tweaking each tests
+
 
 ## About
 
@@ -111,4 +114,53 @@ If **all** grid squares average channel values are below your provided tolerance
 ## Using Fuzi with your Test Framework
 
 ```js
+import test from 'ava'
+import fuzi from 'fuzi'
+
+test('Different images fail', async t => {
+	const img1 = 'fixtures/green-circle.png'
+	const img2 = 'fixtures/red-square.png'
+
+	const opts = {
+		grid: {
+			columns: 8,
+			rows: 8
+		},
+		tolerance: {
+			hue: 0,
+			sat: 0,
+			lum: 0,
+			alp: 0
+		}
+	}
+
+	const result = await fuzi(img1, img2, opts)
+	t.true(result.fail)
+})
 ```
+
+```js
+import test from 'ava'
+import fuzi from 'fuzi'
+
+test('Identical images pass', async t => {
+	const img1 = 'fixtures/green-circle.png'
+	const img2 = 'fixtures/green-circle.png'
+	const opts = {
+		grid: {
+			columns: 8,
+			rows: 8
+		},
+		tolerance: {
+			hue: 0,
+			sat: 0,
+			lum: 0,
+			alp: 0
+		}
+	}
+	const result = await fuzi(img1, img2, opts)
+	t.true(result.pass)
+})
+```
+
+
