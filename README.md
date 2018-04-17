@@ -1,6 +1,6 @@
 # 🚧  Alpha Version (Work in Progress)
 
-The API is subject to change.
+API subject to change
 
 ---
 
@@ -20,6 +20,12 @@ $ fuzi red-square.png green-circle.jpg -v
 ```
 
 ![Fuzi! in action](examples/first-glance-grid.png)
+
+## Support
+
+Support the development of Fuzi by [becoming a patreon](https://patreon.com/bePatron?u=9720216).
+
+<a href="https://patreon.com/bePatron?u=9720216"><img width="120" src="https://f1lt3r.io/content/images/2018/04/become_a_patron_button@2x.png"></a>
 
 ## Features
 
