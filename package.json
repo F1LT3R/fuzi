@@ -58,6 +58,7 @@
 		"chalk": "^2.3.2",
 		"chromafi": "^2.0.4",
 		"color": "^3.0.0",
+		"strip-ansi": "^4.0.0",
 		"deepmerge": "^2.1.0",
 		"get-pixels": "^3.3.0",
 		"meow": "^4.0.0"

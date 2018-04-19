@@ -3,6 +3,7 @@ const color = require('color')
 const chalk = require('chalk')
 const chromafi = require('chromafi')
 const deepmerge = require('deepmerge')
+const stripAnsi = require('strip-ansi')
 
 const defaultOpts = require('./default-opts.js')
 
@@ -377,11 +378,14 @@ const fuzzyMatch = async (img1, img2, opts) => {
 		difference: maxDiff
 	}
 
+	const log = ansi => {
+		const str = stripAnsi(ansi)
+		opts.errorLog(str)
+	}
+
 	// We want to log the pass mark even when not failing
 	result.mark = reportResult(passed, maxDiff, opts)
 	if (Reflect.has(opts, 'errorLog') && typeof opts.errorLog === 'function') {
-		const log = opts.errorLog
-
 		if (opts.display.mark) {
 			log(result.mark)
 		}
@@ -399,8 +403,6 @@ const fuzzyMatch = async (img1, img2, opts) => {
 		result.image2 = reportImageToAnsi(image2, opts)
 
 		if (Reflect.has(opts, 'errorLog') && typeof opts.errorLog === 'function') {
-			const log = opts.errorLog
-
 			if (opts.display.pretty) {
 				const output = style.title('Pretty Details') + '\n' + result.pretty
 				log(output)
