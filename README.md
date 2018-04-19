@@ -1,9 +1,3 @@
-# 🚧  Alpha Version (Work in Progress)
-
-API subject to change
-
----
-
 # Fuzi!
 
 > 🐻  fuzzy image diff'ing for the terminal
@@ -17,9 +11,11 @@ API subject to change
 
 Support the development of Fuzi by [becoming a patreon](https://patreon.com/bePatron?u=9720216).
 
-<a href="https://patreon.com/bePatron?u=9720216"><img width="120" src="https://f1lt3r.io/content/images/2018/04/become_a_patron_button@2x.png"></a>
+<a href="https://patreon.com/bePatron?u=9720216"><img width="160" src="https://f1lt3r.io/content/images/2018/04/become_a_patron_button@2x.png"></a>
 
 ## Example
+
+Fuzi is an image diffing tool for Ref-Testing in your facorite CI environment, (Travis, Circle, etc). Fuzi outputs graphics to your terminal using ANSI color codes, making it quicker to understand why a test is failing from the logs of your remote server.
 
 Need to check the difference between two images? Ask Fuzi! 🐻
 
@@ -29,31 +25,32 @@ $ fuzi red-square.png green-circle.jpg -v
 
 ![Fuzi! in action](examples/first-glance-grid.png)
 
+To run this as a Node API:
+
+```js
+const fuzi = require('fuzi');
+
+(async () => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	const result = await fuzi(img1, img2);
+	console.log(result.pass);  // false
+})
+```
+
 ## Features
 
-- Diff images from the CLI
-- Diff in API Mode for use in test frameworks
-- Images do not have to match
+- **CLI Mode** - Diff images from the CLI
+- **API Mode** - Diff from Node in your favorite test framework
+- **Unequal Images**
 	+ Size can be different
 	+ Dimensions can be different
 	+ File type can be different
-- Supports file-types: PNG, JPG
-- Configurable settings for tweaking each tests
-
-
-## About
-
-Fuzi is an image diffing tool for Ref-Testing in a CI environment, (Travis, Circle, etc). Fuzi outputs graphics to your terminal, making it quicker to understand why a test is failing. 
-
-### CLI plus API
-	
-Fuzi can diff in the CLI so that you can experiment and get used to it's inputs and outputs. Fuzi diff as a Node API to use in your testing framework.
-
-### Call it a "PASS"
-
-When your tests fail in the cloud, Fuzi gives you the tolerance settings required to make the test pass the next time it runs. Phew!
-
-![Test details in the Terminal](examples/details.png)
+- **File-types:**
+	+ PNG
+	+ JPG
+- **Easy Pass** - "pass settings" provided on every fail
+- **User Configurable** - tweak settings to your tests
 
 ## Installation
 
@@ -71,13 +68,296 @@ $ npm i --save-dev fuzi
 $ yarn add fuzi
 ```
 
-## How does Fuzi work?
+# CLI Usage
 
-### Grid
+It is recommended that you familiarize yourself with Fuzi in the CLI first. This will make writing tests much easier.
+
+## Visual Diff
+
+View the visual diff between the two images. The visual diff is normalized to the maximum difference in each channel. This means the visual diff does not represent the actual pixel difference, but allows small differences to always be visible.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -v
+```
+![examples/cli-visual-diff.png](examples/cli-visual-diff.png)
+
+## Scorecard
+
+- **Flag:** `-d`
+- **Type:** `boolean`
+
+The scorecard represents each rectangle in the visual grid. Red squares represent failures. Green squares represent passes. In this example, the luminance channel tolerance is being set high enough to show where the two images are most similar.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -d -l 12
+```
+
+![examples/cli-scorecard.png](examples/cli-scorecard.png)
+
+Within each red square you will see dark blocks. These dark blocks represent the channels that were different. This helps to provide channel difference information at a glance.
+
+For example:
+
+```plaintext
+H = ▘
+S = ▝
+L = ▖
+A = ▗
+HSLA = █
+HSL = ▛
+```
+
+Note: The scorecard will always be the same width as your grid.
+
+## Pretty Details
+
+- **Flag: `-p`**
+- **Type: `boolean`**
+
+Pretty Details prints out the your expected tolerance and the actual tolerance. To help make testing easier, Pretty Details prints settings that will make your failing test pass, in the form of:
+
+1. JavaScript object tollerance settings
+1. CLI flags tolerance settings
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -l 12 -p
+```
+
+![examples/cli-pretty-details.png](examples/cli-pretty-details.png)
+
+## Grid Size
+
+- **Flags:** `-c <columns>`, `-r <rows>`
+- **Type:** `number`
+
+By default Fuzi uses a `32 x 16` grid size. Changing the grid size does not change the overall performance. Every pixel in each image is counted.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -d -l 12 -c 8 -r 8
+```
+
+![examples/cli-grid-size-columns-rows.png](examples/cli-grid-size-columns-rows.png)
+
+## Channel Tollerances
+
+- **Flags:**
+	+ `-h <hue>`
+	+ `-s <saturation>`
+	+ `-l <luminance>`
+	+ `-a <alpha>`
+- **Type:** `number`
+
+You can provide the tolerances thresholds that you would like to test for each channel. If Fuzi finds no grid squares that are greater than the tolerance thresholds you set, then the test will pass.
+
+```shell
+fuzi -h 254 -s 100 -l 13 -a 0 fixtures/red-square.png fixtures/green-circle.jpg
+```
+
+![examples/cli-channel-tolerance-settings.png](examples/cli-channel-tolerance-settings.png)
+
+## Displaying Source Images
+
+- **Flag:**`-i <images:columns>`
+- **Type:** `boolean|number`
+
+Fuzi can output the source images you are diffing as ANSI graphics. This can help you see what your images look like in CI, without sending image data to another server.
+
+To display the source images that you are diffing, use the `-i` flag. The default image width is 32 characters wide.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -i
+```
+
+![examples/cli-display-source-images.png](examples/cli-display-source-images.png)
+
+Note that when you select the image, it is made up of gradient block characters, making it visible in clients without good color support.
+
+![examples/cli-images-block-gradient.png](examples/cli-images-block-gradient.png)
+
+To set the width of the display images manually, you can add a number to the `-i` flag, for example:
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -i 8
+```
+
+![examples/cli-image-display-size-adjust.png](examples/cli-image-display-size-adjust.png)
+
+## Everything
+
+- **Flag:**`-e <everything>`
+- **Type:** `boolean`
+
+To display everything use the `-e` flag.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -e
+```
+
+This will output all of the above graphic reporters listed for the CLI.
+
+# API Usage
+
+If you have read the CLI Usage section and experimented with Fuzi in the CLI, you will have a good idea how to get the results you want.
+
+## Basic Usage
+
+```js
+const fuzi = require('fuzi');
+
+(async () => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	const result = await fuzi(img1, img2);
+	console.log(result.pass);  // false
+})
+```
+
+## Options
+
+Here is the list of Fuzi options and their default values together:
+
+```
+const opts = {
+	// The grid shape for your comparison
+	grid: {
+		columns: 32,
+		rows: 16
+	},
+
+	// The maximum different you expect to find
+	// in each channel between the two images
+	tolerance: {
+		hue: 0,
+		sat: 0,
+		lum: 0,
+		alp: 0
+	},
+
+	// The display options are only relevant when
+	// you set the errorLog (see below)
+	display: {
+		// Display the PASS/FAIL result alongside
+		// the actual differences between the two
+		// images, (for each HSLA channel)
+		mark: false,
+
+		// Pretty-Print the results, with extra 
+		// details for CLI usage
+		pretty: false
+		
+		// Output your source images to the 
+		// CLI with ANSI color codes
+		images: false,
+
+		// Set the character width of the 
+		// images output to the CLI
+		imageWidth: 32,
+		
+		// Show the scorecard (debug your results)
+		scorecard: false,
+
+		// Show the visual difference between the 
+		// two images as color ANSI output
+		// (debug your results)
+		visualDiff: false
+	},
+
+	errorLog: msg => {
+		// do something with msg
+	}
+}
+```
+
+You can pass options to Fuzi as the third argument:
+
+```js
+const fuzi = require('fuzi');
+
+(async () => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	
+	const opts = {
+		grid: {
+			columns: 4,
+			rows: 4
+		},
+		tolerance: {
+			hue: 0,
+			sat: 1,
+			lum: 0,
+			alp: 1
+		}
+	}
+
+	const result = await fuzi(img1, img2, opts);
+	console.log(result.pass);  // false
+})
+```
+
+## Fuzi Error Log
+
+It is recommended that you pass an `opts.errorLog` callback in all your passing tests.
+
+```js
+import test from 'ava'
+import fuzi from 'fuzi'
+
+test('Show me the logs!', async t => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	
+	const opts = {
+		grid: {
+			columns: 4,
+			rows: 4
+		},
+		tolerance: {
+			hue: 0,
+			sat: 1,
+			lum: 0,
+			alp: 1
+		},
+
+		// Add your error log here!
+		// (If you want to log failure reports in CI)
+		// Eg: scorecard, images, visualDiff, prettyDetails
+		errorLog: msg => {
+			t.log(msg)
+		}
+	}
+
+	const result = await fuzi(img1, img2, opts);
+	t.true(result.fail)
+})
+```
+
+### Why Do This?
+
+If you are passing significant amounts of data (like ANSI representations of images), from parallel test processes back into the main thread, then your error results will likely become corrupted.
+
+Using `opts.errorLog` gives you the opportunity to hook into the Inter-Process Communication stream of your favorite parallel test framework from within your test. This will add some overhead to your testing times. But it's wirth the cost.
+
+You can read more about this in the context of AVA here: [AVA Issues #1758](https://github.com/avajs/ava/issues/1758)
+
+# How does Fuzi work?
+
+## Grid
 
 Rather than try to compare the whole image, Fuzi splits each image into a spatial grid and compares the two. This helps to evaluated which parts of the image match, and which are different.
 
-### Channels
+The default grid size is 32 x 16:
+
+```js
+const opts = {
+	grid: {
+		columns: 32,
+		rows: 16
+	}
+}
+```
+
+## Channels
 
 Fuzi splits your images into 4 channels to finds the average value for each grid square. These chanels are:
 
@@ -86,7 +366,7 @@ Fuzi splits your images into 4 channels to finds the average value for each grid
 - Luminance
 - Alpha
 
-### Tolerance
+## Tolerance
 
 Fuzi then takes the tolerance parameter you provide, and compares the average chanel values in each square to see if they are above or below your threshold.
 
@@ -103,7 +383,7 @@ const opts = {
 }
 ```
 
-### PASS or FAIL
+## PASS or FAIL
 
 If **any** grid square's average channel value is above the tolerance (for **any** channel), your images are considered to be `different`.
 
@@ -111,56 +391,5 @@ This results in a `FAIL`.
 
 If **all** grid squares average channel values are below your provided tolerance threshold, then your images are considered to the `alike`.
 
-## Using Fuzi with your Test Framework
-
-```js
-import test from 'ava'
-import fuzi from 'fuzi'
-
-test('Different images fail', async t => {
-	const img1 = 'fixtures/green-circle.png'
-	const img2 = 'fixtures/red-square.png'
-
-	const opts = {
-		grid: {
-			columns: 8,
-			rows: 8
-		},
-		tolerance: {
-			hue: 0,
-			sat: 0,
-			lum: 0,
-			alp: 0
-		}
-	}
-
-	const result = await fuzi(img1, img2, opts)
-	t.true(result.fail)
-})
-```
-
-```js
-import test from 'ava'
-import fuzi from 'fuzi'
-
-test('Identical images pass', async t => {
-	const img1 = 'fixtures/green-circle.png'
-	const img2 = 'fixtures/green-circle.png'
-	const opts = {
-		grid: {
-			columns: 8,
-			rows: 8
-		},
-		tolerance: {
-			hue: 0,
-			sat: 0,
-			lum: 0,
-			alp: 0
-		}
-	}
-	const result = await fuzi(img1, img2, opts)
-	t.true(result.pass)
-})
-```
-
+This results in a `PASS`.
 

@@ -1,22 +1,46 @@
 const defaultOpts = {
-	grid: {
-		columns: 32,
-		rows: 16
+	cli: {
+		grid: {
+			columns: 32,
+			rows: 16
+		},
+		tolerance: {
+			hue: 0,
+			sat: 0,
+			lum: 0,
+			alp: 0
+		},
+		display: {
+			mark: true,
+			pretty: false,
+			scorecard: false,
+			grid: false,
+			channelDiff: false,
+			visualDiff: false,
+			images: false
+		}
 	},
-	tolerance: {
-		hue: 0,
-		sat: 0,
-		lum: 0,
-		alp: 0
-	},
-	display: {
-		images: false,
-		imageWidth: 32,
-		result: false,
-		values: false,
-		scorecard: false,
-		visualDiff: false,
-		titles: true
+
+	api: {
+		grid: {
+			columns: 32,
+			rows: 16
+		},
+		tolerance: {
+			hue: 0,
+			sat: 0,
+			lum: 0,
+			alp: 0
+		},
+		display: {
+			mark: true,
+			pretty: true,
+			scorecard: true,
+			grid: true,
+			channelDiff: true,
+			visualDiff: true,
+			images: 32
+		}
 	}
 }
 
