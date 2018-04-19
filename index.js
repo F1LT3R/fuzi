@@ -158,13 +158,13 @@ const reportPrettyDetail = (pass, maxDiff, opts) => {
 	report += '\n'
 	report += chalk.gray.italic.underline('(Use these values in `opts.tolerance` to make the test pass.)')
 	report += '\n'
-	const toleranceDiff = {
+	const tolerance = {
 		hue: maxDiff.hue,
 		sat: maxDiff.sat,
 		lum: maxDiff.lum,
 		alp: maxDiff.alp
 	}
-	report += chromafi({toleranceDiff}, chromafiOpts)
+	report += chromafi({tolerance}, chromafiOpts)
 	report += chalk.white(`-h ${maxDiff.hue} -s ${maxDiff.sat} -l ${maxDiff.lum} -a ${maxDiff.alp}`)
 	report += '\n'
 	report += chalk.gray.italic.underline('(Use these values in when calling from the CLI to make the test pass.)')
@@ -376,9 +376,18 @@ const fuzzyMatch = async (img1, img2, opts) => {
 		difference: maxDiff
 	}
 
+	// We want to log the pass mark even when not failing
+	result.mark = reportResult(passed, maxDiff, opts)
+	if (Reflect.has(opts, 'errorLog') && typeof opts.errorLog === 'function') {
+		const log = opts.errorLog
+
+		if (opts.display.mark) {
+			log(result.mark)
+		}
+	}
+
 	// If we failed, then we are interested in why...
 	if (result.fail) {
-		result.mark = reportResult(passed, maxDiff, opts)
 		result.pretty = reportPrettyDetail(passed, maxDiff, opts)
 		const scores = reportScores(channelDiff, opts)
 		result.scorecard = scores.ansi
@@ -390,9 +399,6 @@ const fuzzyMatch = async (img1, img2, opts) => {
 
 		if (Reflect.has(opts, 'errorLog') && typeof opts.errorLog === 'function') {
 			const log = opts.errorLog
-			if (opts.display.mark) {
-				log(result.mark)
-			}
 
 			if (opts.display.pretty) {
 				const output = style.title('Pretty Details') + '\n' + result.pretty

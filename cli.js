@@ -93,6 +93,7 @@ if (rowsCli) {
 }
 
 const defaultImgWidth = 32
+
 if (typeof meowCli.flags.i === 'string' || meowCli.flags.e) {
 	opts.display.images = meowCli.flags.i || defaultImgWidth
 }

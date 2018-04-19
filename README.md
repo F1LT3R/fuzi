@@ -40,27 +40,17 @@ const fuzi = require('fuzi');
 
 ## Features
 
-- Diff images from the CLI
-- Diff in API Mode for use in test frameworks
-- Images do not have to match
+- **CLI Mode** - Diff images from the CLI
+- **API Mode** - Diff from Node in your favorite test framework
+- **Unequal Images**
 	+ Size can be different
 	+ Dimensions can be different
 	+ File type can be different
-- Supports file-types: PNG, JPG
-- Configurable settings for tweaking each test
-
-### CLI and API Modes Available
-	
-- Fuzi can diff in the CLI so that you can experiment, and get used to it's settings and results.
-- Fuzi can diff as a Node API for use in your favorite testing framework.
-
-I like to use [AVA: The Futurisic Test Runner](https://github.com/avajs/ava).
-
-### Make Passing Easy
-
-When your tests fail in the cloud, Fuzi can give you the tolerance settings you need to make the test pass the next time you runs. Phew!
-
-![Test details in the Terminal](examples/details.png)
+- **File-types:**
+	+ PNG
+	+ JPG
+- **Easy Pass** - "pass settings" provided on every fail
+- **User Configurable** - tweak settings to your tests
 
 ## Installation
 
@@ -80,13 +70,132 @@ $ yarn add fuzi
 
 # CLI Usage
 
+It is recommended that you familiarize yourself with Fuzi in the CLI first. This will make writing tests much easier.
+
 ## Visual Diff
 
+View the visual diff between the two images. The visual diff is normalized to the maximum difference in each channel. This means the visual diff does not represent the actual pixel difference, but allows small differences to always be visible.
+
 ```shell
-node cli fixtures/red-square.png fixtures/green-circle.jpg -v
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -v
+```
+![examples/cli-visual-diff.png](examples/cli-visual-diff.png)
+
+## Scorecard
+
+- **Flag:** `-d`
+- **Type:** `boolean`
+
+The scorecard represents each rectangle in the visual grid. Red squares represent failures. Green squares represent passes. In this example, the luminance channel tolerance is being set high enough to show where the two images are most similar.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -d -l 12
 ```
 
-![examples/cli-visual-diff.png](examples/cli-visual-diff.png)
+![examples/cli-scorecard.png](examples/cli-scorecard.png)
+
+Within each red square you will see dark blocks. These dark blocks represent the channels that were different. This helps to provide channel difference information at a glance.
+
+For example:
+
+```plaintext
+H = ▘
+S = ▝
+L = ▖
+A = ▗
+HSLA = █
+HSL = ▛
+```
+
+Note: The scorecard will always be the same width as your grid.
+
+## Pretty Details
+
+- **Flag: `-p`**
+- **Type: `boolean`**
+
+Pretty Details prints out the your expected tolerance and the actual tolerance. To help make testing easier, Pretty Details prints settings that will make your failing test pass, in the form of:
+
+1. JavaScript object tollerance settings
+1. CLI flags tolerance settings
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -l 12 -p
+```
+
+![examples/cli-pretty-details.png](examples/cli-pretty-details.png)
+
+## Grid Size
+
+- **Flags:** `-c <columns>`, `-r <rows>`
+- **Type:** `number`
+
+By default Fuzi uses a `32 x 16` grid size. Changing the grid size does not change the overall performance. Every pixel in each image is counted.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -d -l 12 -c 8 -r 8
+```
+
+![examples/cli-grid-size-columns-rows.png](examples/cli-grid-size-columns-rows.png)
+
+## Channel Tollerances
+
+- **Flags:**
+	+ `-h <hue>`
+	+ `-s <saturation>`
+	+ `-l <luminance>`
+	+ `-a <alpha>`
+- **Type:** `number`
+
+You can provide the tolerances thresholds that you would like to test for each channel. If Fuzi finds no grid squares that are greater than the tolerance thresholds you set, then the test will pass.
+
+```shell
+fuzi -h 254 -s 100 -l 13 -a 0 fixtures/red-square.png fixtures/green-circle.jpg
+```
+
+![examples/cli-channel-tolerance-settings.png](examples/cli-channel-tolerance-settings.png)
+
+## Displaying Source Images
+
+- **Flag:**`-i <images:columns>`
+- **Type:** `boolean|number`
+
+Fuzi can output the source images you are diffing as ANSI graphics. This can help you see what your images look like in CI, without sending image data to another server.
+
+To display the source images that you are diffing, use the `-i` flag. The default image width is 32 characters wide.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -i
+```
+
+![examples/cli-display-source-images.png](examples/cli-display-source-images.png)
+
+Note that when you select the image, it is made up of gradient block characters, making it visible in clients without good color support.
+
+![examples/cli-images-block-gradient.png](examples/cli-images-block-gradient.png)
+
+To set the width of the display images manually, you can add a number to the `-i` flag, for example:
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -i 8
+```
+
+![examples/cli-image-display-size-adjust.png](examples/cli-image-display-size-adjust.png)
+
+## Everything
+
+- **Flag:**`-e <everything>`
+- **Type:** `boolean`
+
+To display everything use the `-e` flag.
+
+```shell
+fuzi fixtures/red-square.png fixtures/green-circle.jpg -e
+```
+
+This will output all of the above graphic reporters listed for the CLI.
+
+# API Usage
 
 ## All Options
 
