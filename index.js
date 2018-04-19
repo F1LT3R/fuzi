@@ -5,6 +5,7 @@ const chromafi = require('chromafi')
 const deepmerge = require('deepmerge')
 
 const defaultOpts = require('./default-opts.js')
+
 defaultOpts.env = process.env.NODE_ENV
 
 const style = {
