@@ -12,10 +12,12 @@ const meowStr = `
 	  --sat, -s  Saturation tolerance. (0 - 100)
 	  --lum, -l  Luminance tolerance. (0 - 100)
 	  --alp, -a  Alpha tolerance. (0 - 100)
-	  --scorecard, -c  Show Scorecard.
-	  --visualDiff, -d  Show visual diff.
+	  --rows, -r  Grid rows.
+	  --columns, -c  Grid rows.
+	  --scorecard, -d  Show Scorecard.
+	  --visualDiff, -v  Show visual diff.
 	  --showImages, -i  Show original images in terminal. (true/columns)
-	  --details, -d  Display more detailed results.
+	  --pretty, -p  Display pretty tolerance results.
 	  --everything, -e  Display everything.
 
 	Examples
@@ -39,20 +41,28 @@ const meowOpts = {
 			type: 'number',
 			alias: 'a'
 		},
+		rows: {
+			type: 'number',
+			alias: 'r'
+		},
+		columns: {
+			type: 'number',
+			alias: 'c'
+		},
 		showImages: {
 			type: 'string',
 			alias: 'i'
 		},
-		details: {
+		pretty: {
 			type: 'boolean',
-			alias: 'd'
+			alias: 'p'
 		}
 	}
 }
 
 const meowCli = meow(meowStr, meowOpts)
 
-const opts = defaultOpts
+const opts = defaultOpts.cli
 
 const [expectedImg, actualImg] = meowCli.input
 
@@ -60,6 +70,8 @@ const hueTolCli = meowCli.flags.h
 const satTolCli = meowCli.flags.s
 const lumTolCli = meowCli.flags.l
 const alpTolCli = meowCli.flags.a
+const columnsCli = meowCli.flags.c
+const rowsCli = meowCli.flags.r
 
 if (hueTolCli) {
 	opts.tolerance.hue = hueTolCli
@@ -73,20 +85,31 @@ if (lumTolCli) {
 if (alpTolCli) {
 	opts.tolerance.alp = alpTolCli
 }
+if (columnsCli) {
+	opts.grid.columns = columnsCli
+}
+if (rowsCli) {
+	opts.grid.rows = rowsCli
+}
+
+const defaultImgWidth = 32
 if (typeof meowCli.flags.i === 'string' || meowCli.flags.e) {
-	opts.display.images = meowCli.flags.i || true
+	opts.display.images = meowCli.flags.i || defaultImgWidth
 }
 if (meowCli.flags.v || meowCli.flags.e) {
 	opts.display.visualDiff = true
 }
-if (meowCli.flags.c || meowCli.flags.e) {
+if (meowCli.flags.d || meowCli.flags.d) {
 	opts.display.scorecard = true
 }
-if (meowCli.flags.d || meowCli.flags.e) {
-	opts.display.details = true
+if (meowCli.flags.p || meowCli.flags.p) {
+	opts.display.pretty = true
 }
 
 // Force result to display in CLI mode
-opts.display.result = true
+opts.errorLog = msg => {
+	// eslint-disable-next-line no-console
+	console.log(msg)
+}
 
 fuzi(expectedImg, actualImg, opts)
