@@ -197,9 +197,24 @@ This will output all of the above graphic reporters listed for the CLI.
 
 # API Usage
 
-## All Options
+If you have read the CLI Usage section and experimented with Fuzi in the CLI, you will have a good idea how to get the results you want.
 
-Here is are the options and their default values together:
+## Basic Usage
+
+```js
+const fuzi = require('fuzi');
+
+(async () => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	const result = await fuzi(img1, img2);
+	console.log(result.pass);  // false
+})
+```
+
+## Options
+
+Here is the list of Fuzi options and their default values together:
 
 ```
 const opts = {
@@ -218,15 +233,17 @@ const opts = {
 		alp: 0
 	},
 
+	// The display options are only relevant when
+	// you set the errorLog (see below)
 	display: {
 		// Display the PASS/FAIL result alongside
 		// the actual differences between the two
 		// images, (for each HSLA channel)
-		result: false,
+		mark: false,
 
 		// Pretty-Print the results, with extra 
 		// details for CLI usage
-		Pretty: false
+		pretty: false
 		
 		// Output your source images to the 
 		// CLI with ANSI color codes
@@ -242,10 +259,86 @@ const opts = {
 		// Show the visual difference between the 
 		// two images as color ANSI output
 		// (debug your results)
-		visualDiff: false,
+		visualDiff: false
+	},
+
+	errorLog: msg => {
+		// do something with msg
 	}
 }
 ```
+
+You can pass options to Fuzi as the third argument:
+
+```js
+const fuzi = require('fuzi');
+
+(async () => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	
+	const opts = {
+		grid: {
+			columns: 4,
+			rows: 4
+		},
+		tolerance: {
+			hue: 0,
+			sat: 1,
+			lum: 0,
+			alp: 1
+		}
+	}
+
+	const result = await fuzi(img1, img2, opts);
+	console.log(result.pass);  // false
+})
+```
+
+## Fuzi Error Log
+
+It is recommended that you pass an `opts.errorLog` callback in all your passing tests.
+
+```js
+import test from 'ava'
+import fuzi from 'fuzi'
+
+test('Show me the logs!', async t => {
+	const img1 = 'fixtures/red-square.png';
+	const img2 = 'fixtures/green-circle.png';
+	
+	const opts = {
+		grid: {
+			columns: 4,
+			rows: 4
+		},
+		tolerance: {
+			hue: 0,
+			sat: 1,
+			lum: 0,
+			alp: 1
+		},
+
+		// Add your error log here!
+		// (If you want to log failure reports in CI)
+		// Eg: scorecard, images, visualDiff, prettyDetails
+		errorLog: msg => {
+			t.log(msg)
+		}
+	}
+
+	const result = await fuzi(img1, img2, opts);
+	t.true(result.fail)
+})
+```
+
+### Why Do This?
+
+If you are passing significant amounts of data (like ANSI representations of images), from parallel test processes back into the main thread, then your error results will likely become corrupted.
+
+Using `opts.errorLog` gives you the opportunity to hook into the Inter-Process Communication stream of your favorite parallel test framework from within your test. This will add some overhead to your testing times. But it's wirth the cost.
+
+You can read more about this in the context of AVA here: [AVA Issues #1758](https://github.com/avajs/ava/issues/1758)
 
 # How does Fuzi work?
 
